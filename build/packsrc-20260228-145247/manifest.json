@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "UITab Local Clone",
+  "description": "Local-only new tab extension inspired by UITab.",
+  "version": "0.1.0",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://geocoding-api.open-meteo.com/*",
+    "https://api.open-meteo.com/*"
+  ],
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  }
+}

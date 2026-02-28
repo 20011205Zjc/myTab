@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UITab Local Clone</title>
+    <link rel="stylesheet" href="styles/newtab.css" />
+  </head>
+  <body>
+    <div class="bg-orb bg-orb-left" aria-hidden="true"></div>
+    <div class="bg-orb bg-orb-right" aria-hidden="true"></div>
+
+    <div id="app" class="app layout-cozy">
+      <header class="top-bar">
+        <div id="clock-display" class="clock-display">--:--:--</div>
+
+        <form id="search-form" class="search-form" autocomplete="off">
+          <label for="search-engine-select" class="sr-only">搜索引擎</label>
+          <select id="search-engine-select" class="search-engine-select"></select>
+          <label for="search-input" class="sr-only">搜索关键词</label>
+          <input
+            id="search-input"
+            class="search-input"
+            type="text"
+            placeholder="输入关键词，按 Enter 搜索（/ 可快速聚焦）"
+          />
+          <button id="search-submit" class="search-submit" type="submit">搜索</button>
+        </form>
+
+        <div class="top-actions">
+          <button id="settings-toggle" class="ghost-btn" type="button">设置</button>
+        </div>
+      </header>
+
+      <main class="main-layout">
+        <section class="panel quick-links-panel">
+          <div class="panel-head">
+            <h2>快捷网站</h2>
+            <div class="panel-head-actions">
+              <button id="add-link-btn" class="ghost-btn" type="button">新增</button>
+            </div>
+          </div>
+          <div id="quick-links-grid" class="quick-links-grid"></div>
+        </section>
+
+        <section class="panel widgets-panel">
+          <div id="weather-widget" class="widget">
+            <div class="widget-head">
+              <h3>天气</h3>
+              <button id="weather-refresh-btn" class="ghost-btn small-btn" type="button">
+                刷新
+              </button>
+            </div>
+            <p id="weather-status" class="widget-content">天气组件已关闭</p>
+          </div>
+
+          <div id="todo-widget" class="widget">
+            <div class="widget-head">
+              <h3>待办</h3>
+            </div>
+            <form id="todo-form" class="todo-form">
+              <label for="todo-input" class="sr-only">新增待办</label>
+              <input id="todo-input" type="text" maxlength="120" placeholder="新增一条待办..." />
+              <button type="submit" class="ghost-btn small-btn">添加</button>
+            </form>
+            <ul id="todo-list" class="todo-list"></ul>
+          </div>
+        </section>
+      </main>
+
+      <footer class="status-bar">
+        <span id="status-text">准备就绪</span>
+      </footer>
+    </div>
+
+    <aside id="settings-panel" class="settings-panel" aria-hidden="true">
+      <div class="settings-head">
+        <h2>设置</h2>
+        <button id="settings-close" class="ghost-btn" type="button">关闭</button>
+      </div>
+
+      <form id="settings-form" class="settings-form">
+        <section class="settings-section">
+          <h3>主题与背景</h3>
+          <label for="setting-theme-mode">主题模式</label>
+          <select id="setting-theme-mode">
+            <option value="auto">跟随系统</option>
+            <option value="light">浅色</option>
+            <option value="dark">深色</option>
+          </select>
+
+          <label for="setting-background">背景风格</label>
+          <select id="setting-background"></select>
+
+          <label class="inline-check">
+            <input id="setting-auto-rotate" type="checkbox" />
+            自动切换背景
+          </label>
+
+          <label for="setting-rotate-minutes">切换间隔（分钟）</label>
+          <input id="setting-rotate-minutes" type="number" min="1" max="240" step="1" />
+        </section>
+
+        <section class="settings-section">
+          <h3>搜索</h3>
+          <label for="setting-search-engine">默认引擎</label>
+          <select id="setting-search-engine"></select>
+
+          <label for="setting-custom-search">自定义搜索模板</label>
+          <input
+            id="setting-custom-search"
+            type="url"
+            placeholder="https://example.com/search?q={query}"
+          />
+          <p class="hint">模板必须包含 <code>{query}</code> 占位符。</p>
+        </section>
+
+        <section class="settings-section">
+          <h3>布局与显示</h3>
+          <label class="inline-check">
+            <input id="setting-show-clock" type="checkbox" />
+            显示顶部时钟
+          </label>
+
+          <label class="inline-check">
+            <input id="setting-clock-24h" type="checkbox" />
+            24 小时制
+          </label>
+
+          <label for="setting-layout-mode">布局密度</label>
+          <select id="setting-layout-mode">
+            <option value="compact">紧凑</option>
+            <option value="cozy">舒适</option>
+          </select>
+
+          <label for="setting-grid-columns">快捷卡片列数</label>
+          <input id="setting-grid-columns" type="range" min="2" max="8" step="1" />
+          <div class="value-note">当前列数：<span id="grid-columns-value">4</span></div>
+        </section>
+
+        <section class="settings-section">
+          <h3>组件</h3>
+          <label class="inline-check">
+            <input id="setting-weather-enabled" type="checkbox" />
+            开启天气组件
+          </label>
+
+          <label for="setting-weather-city">天气城市</label>
+          <input id="setting-weather-city" type="text" placeholder="例如：Beijing / Shanghai" />
+
+          <label for="setting-weather-unit">温度单位</label>
+          <select id="setting-weather-unit">
+            <option value="C">摄氏度 (C)</option>
+            <option value="F">华氏度 (F)</option>
+          </select>
+
+          <label class="inline-check">
+            <input id="setting-todo-enabled" type="checkbox" />
+            开启待办组件
+          </label>
+        </section>
+
+        <section class="settings-section">
+          <h3>数据管理</h3>
+          <div class="row-actions">
+            <button id="export-config-btn" class="ghost-btn" type="button">导出配置</button>
+            <button id="import-config-btn" class="ghost-btn" type="button">导入配置</button>
+            <button id="reset-config-btn" class="warn-btn" type="button">恢复默认</button>
+          </div>
+          <p class="hint">
+            快捷键：<code>/</code> 聚焦搜索，<code>Ctrl + ,</code> 打开设置，<code>Alt + 1..9</code>
+            快速打开第 N 个快捷网站。
+          </p>
+        </section>
+
+        <div class="settings-footer">
+          <button class="ghost-btn" type="button" id="settings-cancel-btn">取消</button>
+          <button class="solid-btn" type="submit">保存设置</button>
+        </div>
+      </form>
+    </aside>
+    <div id="settings-overlay" class="overlay" aria-hidden="true"></div>
+
+    <div id="link-modal" class="modal" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3 id="link-modal-title">新增快捷网站</h3>
+          <button id="link-modal-close" class="ghost-btn" type="button">关闭</button>
+        </div>
+        <form id="link-form" class="link-form">
+          <label for="link-title-input">名称</label>
+          <input id="link-title-input" type="text" maxlength="40" required />
+
+          <label for="link-url-input">网址</label>
+          <input id="link-url-input" type="text" required placeholder="https://example.com" />
+
+          <div class="modal-actions">
+            <button id="link-delete-btn" class="warn-btn" type="button">删除</button>
+            <button class="solid-btn" type="submit">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div id="link-modal-overlay" class="overlay" aria-hidden="true"></div>
+
+    <input id="import-config-input" type="file" accept=".json,application/json" hidden />
+
+    <script type="module" src="src/newtab.js"></script>
+  </body>
+</html>

@@ -1,0 +1,231 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UITab Local Clone</title>
+  <link rel="stylesheet" href="styles/newtab.css" />
+</head>
+
+<body>
+  <div class="page-bg" aria-hidden="true"></div>
+
+  <div class="dashboard">
+    <header class="top-header">
+      <div id="clock" class="clock">--:--:--</div>
+
+      <form id="search-form" class="search-form" autocomplete="off">
+        <div class="search-engine-wrap">
+          <img src="https://www.google.com/s2/favicons?domain_url=google.com&sz=64" alt="Engine"
+            class="search-engine-icon" id="search-engine-icon" />
+          <select id="search-engine-select" class="search-engine"></select>
+        </div>
+
+        <div class="search-input-wrap">
+          <input id="search-input" class="search-input" type="text" placeholder="输入关键词，按 Enter 搜索 (/ 可快速聚焦)" />
+          <span class="search-hint">/</span>
+        </div>
+
+        <button class="btn btn-search" type="submit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          搜索
+        </button>
+      </form>
+
+      <div class="header-actions">
+        <button id="settings-open" class="btn btn-icon" type="button" title="设置">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+            </path>
+          </svg>
+        </button>
+        <button id="theme-toggle" class="btn btn-icon" type="button" title="切换主题">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="content-layout">
+      <main class="panel quick-panel">
+        <div class="panel-header">
+          <div class="header-left">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#0d9488" stroke="#0d9488" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <h2>快捷网站</h2>
+          </div>
+          <button id="add-link-btn" class="btn btn-tag" type="button">
+            + 新增
+          </button>
+        </div>
+        <div id="quick-links-grid" class="quick-grid"></div>
+      </main>
+
+      <aside class="panel side-panel">
+
+        <section id="weather-widget" class="widget hidden" style="display:none;">
+          <div class="widget-header">
+            <h3>天气</h3>
+            <button id="weather-refresh-btn" class="btn btn-ghost btn-sm" type="button">刷新</button>
+          </div>
+          <p id="weather-status" class="widget-text">天气组件已关闭</p>
+        </section>
+
+        <section id="todo-widget" class="widget todo-widget">
+          <div class="panel-header">
+            <div class="header-left">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#f97316" stroke="white" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9 12l2 2 4-4"></path>
+              </svg>
+              <h2>待办</h2>
+            </div>
+            <span id="todo-progress" class="todo-progress pill-tag">0 / 0 完成</span>
+          </div>
+
+          <form id="todo-form" class="todo-form">
+            <input id="todo-input" type="text" maxlength="120" placeholder="新增一条待办..." />
+            <button class="btn btn-add-todo" type="submit">添加</button>
+          </form>
+          <ul id="todo-list" class="todo-list"></ul>
+        </section>
+      </aside>
+    </div>
+
+    <footer class="status-bar">
+      <span id="status-text">初始化完成</span>
+    </footer>
+  </div>
+
+  <!-- Hidden settings modal structure for functionality -->
+  <aside id="settings-panel" class="settings-panel" aria-hidden="true" style="display:none;">
+    <div class="settings-header">
+      <h2>设置</h2>
+      <button id="settings-close" class="btn btn-ghost" type="button">关闭</button>
+    </div>
+
+    <form id="settings-form" class="settings-form">
+      <section class="settings-section">
+        <h3>主题与背景</h3>
+        <label for="setting-theme-mode">主题模式</label>
+        <select id="setting-theme-mode">
+          <option value="auto">跟随系统</option>
+          <option value="light">浅色</option>
+          <option value="dark">深色</option>
+        </select>
+
+        <label for="setting-background">背景预设</label>
+        <select id="setting-background"></select>
+
+        <label class="check-row">
+          <input id="setting-auto-rotate" type="checkbox" />
+          自动切换背景
+        </label>
+
+        <label for="setting-rotate-minutes">切换间隔（分钟）</label>
+        <input id="setting-rotate-minutes" type="number" min="1" max="240" step="1" />
+      </section>
+
+      <section class="settings-section">
+        <h3>搜索</h3>
+        <label for="setting-search-engine">默认引擎</label>
+        <select id="setting-search-engine"></select>
+
+        <label for="setting-custom-search">自定义模板</label>
+        <input id="setting-custom-search" type="url" placeholder="https://example.com/search?q={query}" />
+      </section>
+
+      <section class="settings-section">
+        <h3>布局与显示</h3>
+        <label class="check-row">
+          <input id="setting-show-clock" type="checkbox" />
+          显示顶部时钟
+        </label>
+        <label class="check-row">
+          <input id="setting-clock-24h" type="checkbox" />
+          24 小时制
+        </label>
+        <label for="setting-layout-mode">布局密度</label>
+        <select id="setting-layout-mode">
+          <option value="cozy">舒适</option>
+          <option value="compact">紧凑</option>
+        </select>
+        <label for="setting-grid-columns">快捷网站列数</label>
+        <input id="setting-grid-columns" type="range" min="2" max="8" step="1" />
+        <div class="hint">当前列数：<span id="grid-columns-value">4</span></div>
+      </section>
+
+      <section class="settings-section">
+        <h3>组件</h3>
+        <label class="check-row">
+          <input id="setting-weather-enabled" type="checkbox" />
+          开启天气组件
+        </label>
+        <label for="setting-weather-city">天气城市</label>
+        <input id="setting-weather-city" type="text" placeholder="例如 Beijing" />
+        <label for="setting-weather-unit">温度单位</label>
+        <select id="setting-weather-unit">
+          <option value="C">摄氏度 (C)</option>
+          <option value="F">华氏度 (F)</option>
+        </select>
+
+        <label class="check-row">
+          <input id="setting-todo-enabled" type="checkbox" />
+          开启待办组件
+        </label>
+      </section>
+
+      <section class="settings-section">
+        <h3>数据管理</h3>
+        <div class="action-row">
+          <button id="export-config-btn" class="btn btn-ghost" type="button">导出</button>
+          <button id="import-config-btn" class="btn btn-ghost" type="button">导入</button>
+          <button id="reset-config-btn" class="btn btn-danger" type="button">恢复</button>
+        </div>
+      </section>
+
+      <div class="settings-footer">
+        <button id="settings-cancel-btn" class="btn btn-ghost" type="button">取消</button>
+        <button class="btn btn-primary" type="submit">保存</button>
+      </div>
+    </form>
+  </aside>
+  <div id="settings-overlay" class="overlay" aria-hidden="true" style="display:none;"></div>
+
+  <div id="link-modal" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="link-modal-title">新增快捷网站</h3>
+        <button id="link-modal-close" class="btn btn-ghost" type="button">关闭</button>
+      </div>
+      <form id="link-form" class="link-form">
+        <label for="link-title-input">名称</label>
+        <input id="link-title-input" type="text" maxlength="40" required />
+        <label for="link-url-input">网址</label>
+        <input id="link-url-input" type="text" placeholder="https://example.com" required />
+        <div class="action-row">
+          <button id="link-delete-btn" class="btn btn-danger" type="button">删除</button>
+          <button class="btn btn-primary" type="submit">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div id="link-modal-overlay" class="overlay overlay-front" aria-hidden="true"></div>
+
+  <input id="import-config-input" type="file" accept=".json,application/json" hidden />
+  <script type="module" src="src/newtab.js"></script>
+</body>
+
+</html>
