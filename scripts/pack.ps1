@@ -24,6 +24,7 @@ $zipPath = Join-Path $releaseDir "uitab-local-clone-v$version-$timestamp.zip"
 Compress-Archive -Path `
   (Join-Path $ProjectRoot "manifest.json"), `
   (Join-Path $ProjectRoot "newtab.html"), `
+  (Join-Path $ProjectRoot "icons"), `
   (Join-Path $ProjectRoot "styles"), `
   (Join-Path $ProjectRoot "UI"), `
   (Join-Path $ProjectRoot "src"), `
@@ -51,6 +52,7 @@ if ($packer) {
   Copy-Item (Join-Path $ProjectRoot "manifest.json") $stageDir
   Copy-Item (Join-Path $ProjectRoot "newtab.html") $stageDir
   Copy-Item (Join-Path $ProjectRoot "README.md") $stageDir
+  Copy-Item (Join-Path $ProjectRoot "icons") (Join-Path $stageDir "icons") -Recurse
   Copy-Item (Join-Path $ProjectRoot "styles") (Join-Path $stageDir "styles") -Recurse
   Copy-Item (Join-Path $ProjectRoot "UI") (Join-Path $stageDir "UI") -Recurse
   Copy-Item (Join-Path $ProjectRoot "src") (Join-Path $stageDir "src") -Recurse
