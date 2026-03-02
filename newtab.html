@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UITab Local Clone</title>
+  <title>myTab</title>
   <link rel="stylesheet" href="styles/newtab.css" />
 </head>
 
@@ -72,6 +72,23 @@
       </button>
     </header>
 
+    <section id="time-widget" class="widget time-widget">
+      <div id="time-main" class="time-main">--:--:--</div>
+      <p id="time-weekday" class="time-weekday">----年--月--日 星期-</p>
+      <p id="time-lunar" class="time-lunar">--</p>
+      <p id="time-festival" class="time-chip" hidden></p>
+      <p id="time-solar-term" class="time-chip" hidden></p>
+
+      <div id="festival-banner" class="festival-banner" hidden>
+        <span class="festival-icon" aria-hidden="true">🎆</span>
+        <span id="festival-banner-text">节日快乐</span>
+      </div>
+    </section>
+
+    <section id="weather-forecast" class="weather-forecast" hidden>
+      <div id="weather-forecast-grid" class="weather-forecast-grid"></div>
+    </section>
+
     <div class="content-layout">
       <main class="panel quick-panel">
         <div class="panel-header">
@@ -82,32 +99,17 @@
             </svg>
             <h2>快捷网站</h2>
           </div>
-          <button id="add-link-btn" class="btn btn-tag" type="button">
-            + 新增
+          <button id="add-link-btn" class="btn btn-tag" type="button" title="新增快捷网站" aria-label="新增快捷网站">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
           </button>
         </div>
         <div id="quick-links-grid" class="quick-grid"></div>
       </main>
-
-      <aside class="panel side-panel">
-        <section id="time-widget" class="widget time-widget">
-          <div id="time-main" class="time-main">--:--:--</div>
-          <p id="time-weekday" class="time-weekday">----年--月--日 星期-</p>
-          <p id="time-lunar" class="time-lunar">--</p>
-          <p id="time-festival" class="time-chip" hidden></p>
-          <p id="time-solar-term" class="time-chip" hidden></p>
-
-          <div id="festival-banner" class="festival-banner" hidden>
-            <span class="festival-icon" aria-hidden="true">🎆</span>
-            <span id="festival-banner-text">节日快乐</span>
-          </div>
-        </section>
-      </aside>
     </div>
-
-    <section id="weather-forecast" class="weather-forecast" hidden>
-      <div id="weather-forecast-grid" class="weather-forecast-grid"></div>
-    </section>
 
     <footer class="status-bar">
       <span id="status-text">初始化完成</span>

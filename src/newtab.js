@@ -139,6 +139,7 @@ const state = {
   backgroundTimer: null,
   iconCacheSaveTimer: null,
   statusResetTimer: null,
+  layoutRaf: 0,
   weatherLoading: false,
   lastFestivalText: "",
   coverDraft: ""
@@ -399,7 +400,18 @@ function bindEvents() {
     });
   }
 
+  window.addEventListener("resize", handleViewportResize, { passive: true });
   document.addEventListener("keydown", handleKeyboardShortcuts);
+}
+
+function handleViewportResize() {
+  if (state.layoutRaf) {
+    window.cancelAnimationFrame(state.layoutRaf);
+  }
+  state.layoutRaf = window.requestAnimationFrame(() => {
+    state.layoutRaf = 0;
+    applyLayout();
+  });
 }
 
 function renderAll() {
@@ -441,9 +453,40 @@ async function handleThemeToggle() {
 function applyLayout() {
   el.dashboard.classList.toggle("layout-compact", state.config.ui.layout === "compact");
   el.dashboard.classList.toggle("layout-cozy", state.config.ui.layout !== "compact");
-  const effectiveCols = clamp(Number(state.config.ui.gridColumns) || 5, 2, 5);
-  state.config.ui.gridColumns = effectiveCols;
-  el.quickLinksGrid.style.gridTemplateColumns = `repeat(${effectiveCols}, minmax(0, 1fr))`;
+  if (!el.quickLinksGrid) {
+    return;
+  }
+
+  const configuredCols = clamp(Number(state.config.ui.gridColumns) || 5, 2, 5);
+  state.config.ui.gridColumns = configuredCols;
+
+  const responsiveCols = resolveResponsiveGridColumns(configuredCols);
+  const quickRowHeight = state.config.ui.layout === "compact" ? 78 : 84;
+  el.quickLinksGrid.style.setProperty("--cols", String(responsiveCols));
+  el.quickLinksGrid.style.setProperty("--quick-row-height", `${quickRowHeight}px`);
+}
+
+function resolveResponsiveGridColumns(configuredCols) {
+  const gridWidth =
+    Number(el.quickLinksGrid?.clientWidth) ||
+    Number(el.quickLinksGrid?.parentElement?.clientWidth) ||
+    Number(el.dashboard?.clientWidth) ||
+    Number(window.innerWidth) ||
+    0;
+
+  if (gridWidth < 380) {
+    return 1;
+  }
+  if (gridWidth < 680) {
+    return Math.min(configuredCols, 2);
+  }
+  if (gridWidth < 980) {
+    return Math.min(configuredCols, 3);
+  }
+  if (gridWidth < 1280) {
+    return Math.min(configuredCols, 4);
+  }
+  return configuredCols;
 }
 
 function renderClock() {
@@ -849,14 +892,6 @@ function renderQuickLinks() {
     el.quickLinksGrid.appendChild(card);
   }
 
-  const addCard = document.createElement("article");
-  addCard.className = "quick-card add-card";
-  addCard.innerHTML = `
-    <span class="add-icon" aria-hidden="true">+</span>
-    <span class="add-text">添加快捷方式</span>
-  `;
-  addCard.addEventListener("click", () => openLinkModal(null));
-  el.quickLinksGrid.appendChild(addCard);
 }
 
 function handleCardDragStart(event) {
@@ -1599,6 +1634,11 @@ function renderWeatherWidget() {
   const cache = weatherConfig.cache;
   if (isWeatherCacheValid(cache, weatherConfig)) {
     paintWeather(cache, true);
+    if (weatherConfig.useLocation) {
+      ensureDetailedLocationLabel(weatherConfig).catch((error) => {
+        console.warn("定位标签补全失败", error);
+      });
+    }
   } else {
     if (el.weatherStatus) {
       el.weatherStatus.textContent = "正在获取天气...";
@@ -1615,9 +1655,55 @@ function renderWeatherWidget() {
 function canUseAmapIpLocation() {
   return Boolean(
     String(AMAP_API_KEY || "").trim() &&
-      String(AMAP_SECURITY_JSCODE || "").trim() &&
       String(AMAP_IP_API_URL || "").trim()
   );
+}
+
+function canUseAmapReverseGeocode() {
+  return Boolean(
+    String(AMAP_API_KEY || "").trim() &&
+      String(AMAP_REGEO_API_URL || "").trim()
+  );
+}
+
+async function ensureDetailedLocationLabel(weatherConfig) {
+  const location = weatherConfig?.location;
+  if (!location || !Number.isFinite(Number(location.lat)) || !Number.isFinite(Number(location.lon))) {
+    return;
+  }
+  if (!isGenericLocationLabel(location.label)) {
+    return;
+  }
+
+  let label = "";
+  if (canUseAmapReverseGeocode()) {
+    try {
+      label = await reverseGeocodeByAmap(location);
+    } catch (error) {
+      console.warn("高德逆地理补全失败，尝试公开逆地理服务", error);
+    }
+  }
+  if (isGenericLocationLabel(label)) {
+    try {
+      label = await reverseGeocodeByOpenStreetMap(location);
+    } catch (error) {
+      console.warn("公开逆地理补全失败", error);
+      return;
+    }
+  }
+  if (isGenericLocationLabel(label)) {
+    return;
+  }
+
+  weatherConfig.location.label = label;
+  if (weatherConfig.cache && weatherConfig.cache.queryCity === "geo") {
+    weatherConfig.cache.cityLabel = label;
+  }
+  await persistConfig();
+
+  if (weatherConfig.cache && isWeatherCacheValid(weatherConfig.cache, weatherConfig)) {
+    paintWeather(weatherConfig.cache, true);
+  }
 }
 
 function isWeatherCacheValid(cache, weatherConfig) {
@@ -1746,19 +1832,30 @@ async function getGeolocationPermissionState() {
 
 async function getCurrentLocationByBrowserEnhanced() {
   const location = await getCurrentLocationByBrowser();
-  if (!canUseAmapIpLocation()) {
-    return location;
+  if (canUseAmapReverseGeocode()) {
+    try {
+      const label = await reverseGeocodeByAmap(location);
+      if (!isGenericLocationLabel(label)) {
+        return {
+          ...location,
+          label
+        };
+      }
+    } catch (error) {
+      console.warn("高德逆地理编码失败，尝试公开逆地理服务", error);
+    }
   }
+
   try {
-    const label = await reverseGeocodeByAmap(location);
-    if (label) {
+    const label = await reverseGeocodeByOpenStreetMap(location);
+    if (!isGenericLocationLabel(label)) {
       return {
         ...location,
         label
       };
     }
   } catch (error) {
-    console.warn("高德逆地理编码失败，使用浏览器默认地点名", error);
+    console.warn("公开逆地理服务失败，使用浏览器默认地点名", error);
   }
   return location;
 }
@@ -1766,16 +1863,16 @@ async function getCurrentLocationByBrowserEnhanced() {
 async function getCurrentLocationByAmapIp() {
   const key = String(AMAP_API_KEY || "").trim();
   const jscode = String(AMAP_SECURITY_JSCODE || "").trim();
-  if (!key || !jscode) {
-    throw new Error("高德定位 Key 或安全密钥未配置");
+  if (!key) {
+    throw new Error("高德定位 Key 未配置");
   }
 
-  const query = new URLSearchParams({
-    key,
-    jscode,
-    s: "rsv3",
-    platform: "JS"
-  });
+  const query = new URLSearchParams({ key });
+  if (jscode) {
+    query.set("jscode", jscode);
+    query.set("s", "rsv3");
+    query.set("platform", "JS");
+  }
   const response = await fetch(`${AMAP_IP_API_URL}?${query.toString()}`);
   if (!response.ok) {
     throw new Error(`高德定位请求失败（${response.status}）`);
@@ -1858,18 +1955,20 @@ async function reverseGeocodeByAmap(location) {
   }
   const key = String(AMAP_API_KEY || "").trim();
   const jscode = String(AMAP_SECURITY_JSCODE || "").trim();
-  if (!key || !jscode) {
+  if (!key) {
     return "";
   }
 
   const query = new URLSearchParams({
     key,
-    jscode,
-    s: "rsv3",
-    platform: "JS",
     location: `${lon},${lat}`,
     extensions: "base"
   });
+  if (jscode) {
+    query.set("jscode", jscode);
+    query.set("s", "rsv3");
+    query.set("platform", "JS");
+  }
   const response = await fetch(`${AMAP_REGEO_API_URL}?${query.toString()}`);
   if (!response.ok) {
     throw new Error(`高德逆地理请求失败（${response.status}）`);
@@ -1901,6 +2000,58 @@ async function reverseGeocodeByAmap(location) {
     parts.push(township);
   }
   return parts.join("");
+}
+
+async function reverseGeocodeByOpenStreetMap(location) {
+  const lat = Number(location?.lat);
+  const lon = Number(location?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return "";
+  }
+
+  const query = new URLSearchParams({
+    format: "jsonv2",
+    lat: String(lat),
+    lon: String(lon),
+    "accept-language": "zh-CN",
+    addressdetails: "1",
+    zoom: "12"
+  });
+  const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${query.toString()}`);
+  if (!response.ok) {
+    throw new Error(`公开逆地理请求失败（${response.status}）`);
+  }
+  const data = await response.json();
+  const address = data?.address || {};
+
+  const city = String(
+    address?.city ||
+      address?.town ||
+      address?.municipality ||
+      address?.county ||
+      address?.state_district ||
+      address?.state ||
+      ""
+  ).trim();
+  const district = String(
+    address?.city_district ||
+      address?.district ||
+      address?.suburb ||
+      address?.borough ||
+      ""
+  ).trim();
+
+  if (city && district && district !== city) {
+    return `${city} ${district}`;
+  }
+  if (city) {
+    return city;
+  }
+  if (district) {
+    return district;
+  }
+
+  return String(data?.display_name || "").trim();
 }
 
 function getCurrentLocationByBrowser() {
@@ -2382,31 +2533,87 @@ function buildDailyForecastList(daily, unit) {
   return result;
 }
 
-function formatForecastLabel(index, dateText) {
-  if (index === 0) {
-    return "今天";
-  }
-  if (index === 1) {
-    return "明天";
-  }
-  if (index === 2) {
-    return "后天";
-  }
-  const date = new Date(`${dateText}T00:00:00`);
-  if (Number.isNaN(date.getTime())) {
-    return `${index + 1}天后`;
-  }
-  const weekday = new Intl.DateTimeFormat("zh-CN", { weekday: "short" }).format(date);
-  return weekday;
+function buildWeatherInlineItem(text, className = "") {
+  const item = document.createElement("span");
+  item.className = `weather-inline-item ${className}`.trim();
+  item.textContent = String(text || "").trim();
+  return item;
 }
 
-function formatShortDate(dateText) {
-  const value = String(dateText || "");
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) {
-    return value;
+function resolveWeatherLocationLabel(cityLabel, queryCity = "", fallbackLabel = "") {
+  const candidates = [fallbackLabel, cityLabel, queryCity]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  for (const rawValue of candidates) {
+    if (isGenericLocationLabel(rawValue)) {
+      continue;
+    }
+    const normalized = rawValue.replace(/[，,]/g, " ").replace(/\s+/g, " ").trim();
+    const chineseLocation = extractChineseCityDistrict(normalized);
+    if (chineseLocation) {
+      return chineseLocation;
+    }
+    const firstSegment = normalized.split(" ").filter(Boolean)[0];
+    if (firstSegment && !isGenericLocationLabel(firstSegment)) {
+      return firstSegment;
+    }
   }
-  return `${Number(match[2])}/${Number(match[3])}`;
+
+  return "当前位置";
+}
+
+function isGenericLocationLabel(value) {
+  const text = String(value || "").trim().toLowerCase();
+  return !text || text === "当前位置" || text === "geo" || text === "location" || text.includes("当前位置");
+}
+
+function extractChineseCityDistrict(value) {
+  const text = String(value || "")
+    .replace(/中国|中华人民共和国/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+  if (!text || !/[\u4e00-\u9fa5]/.test(text)) {
+    return "";
+  }
+
+  const cityRegex = /(北京市|天津市|上海市|重庆市|[\u4e00-\u9fa5]{2,}(?:市|自治州|地区|盟))/g;
+  const districtRegex = /([\u4e00-\u9fa5]{1,}(?:区|县|旗|市))/g;
+
+  const cityMatches = Array.from(text.matchAll(cityRegex));
+  const cityMatch = cityMatches[cityMatches.length - 1] || null;
+  const city = cityMatch?.[0] || "";
+  const cityIndex = typeof cityMatch?.index === "number" ? cityMatch.index : -1;
+
+  const districtCandidates = Array.from(text.matchAll(districtRegex))
+    .map((item) => ({
+      value: item[0],
+      index: typeof item.index === "number" ? item.index : -1
+    }))
+    .filter((item) => item.value && item.value !== city);
+
+  let district = "";
+  if (cityIndex >= 0) {
+    const nearestDistrict = districtCandidates.find((item) => item.index > cityIndex);
+    district = nearestDistrict?.value || "";
+  }
+  if (!district) {
+    district = districtCandidates[0]?.value || "";
+  }
+  if (district && city) {
+    while (district.startsWith(city)) {
+      district = district.slice(city.length).trim();
+    }
+  }
+
+  if (!city) {
+    const fallback = text.match(/[\u4e00-\u9fa5]{2,}(?:市|自治州|地区|盟)/)?.[0];
+    return fallback || "";
+  }
+  if (district && district !== city) {
+    return `${city} ${district}`;
+  }
+  return city;
 }
 
 function renderWeatherForecastCards(weatherData, message = "") {
@@ -2420,54 +2627,77 @@ function renderWeatherForecastCards(weatherData, message = "") {
     return;
   }
 
-  const days = clamp(
-    Number(weatherConfig.forecastDays) || WEATHER_FORECAST_MIN_DAYS,
-    WEATHER_FORECAST_MIN_DAYS,
-    WEATHER_FORECAST_MAX_DAYS
-  );
   el.weatherForecast.hidden = false;
-  el.weatherForecastGrid.style.setProperty("--weather-days", String(days));
   el.weatherForecastGrid.innerHTML = "";
 
-  const dailyList = Array.isArray(weatherData?.dailyForecast) ? weatherData.dailyForecast.slice(0, days) : [];
+  const dailyList = Array.isArray(weatherData?.dailyForecast) ? weatherData.dailyForecast : [];
+  const todayForecast = dailyList[0] || null;
+  const fallbackLocationLabel =
+    weatherData?.queryCity === "geo" ? state.config?.widgets?.weather?.location?.label : "";
+  const locationText = resolveWeatherLocationLabel(
+    weatherData?.cityLabel,
+    weatherData?.queryCity,
+    fallbackLocationLabel
+  );
   const unit = weatherData?.unit === "F" ? "F" : "C";
+  const currentTemp = Number(weatherData?.temperature);
+  const apparentTemp = Number(weatherData?.apparent);
+  const description = String(weatherData?.description || "").trim();
+  const hasWeatherData = Number.isFinite(currentTemp) && Boolean(description);
 
-  if (dailyList.length === 0) {
-    const emptyCard = document.createElement("article");
-    emptyCard.className = "weather-day-card weather-day-empty";
-    emptyCard.textContent = message || "天气数据暂不可用";
-    el.weatherForecastGrid.appendChild(emptyCard);
+  if (!hasWeatherData) {
+    const empty = document.createElement("div");
+    empty.className = "weather-inline-empty";
+    empty.textContent = message || "天气数据暂不可用";
+    el.weatherForecastGrid.appendChild(empty);
     return;
   }
 
-  for (let index = 0; index < dailyList.length; index += 1) {
-    const day = dailyList[index];
-    const card = document.createElement("article");
-    card.className = "weather-day-card";
+  const iconCode = Number.isFinite(Number(todayForecast?.code))
+    ? Number(todayForecast.code)
+    : Number(weatherData?.code);
+  const weatherIcon = mapWeatherCodeToIcon(iconCode);
+  const topRow = document.createElement("div");
+  topRow.className = "weather-inline-row weather-inline-row-top";
+  topRow.append(
+    buildWeatherInlineItem(locationText, "weather-inline-location"),
+    buildWeatherInlineItem(`${weatherIcon} ${description}`, "weather-inline-desc"),
+    buildWeatherInlineItem(`${Math.round(currentTemp)}°${unit}`, "weather-inline-temp")
+  );
 
-    const label = document.createElement("div");
-    label.className = "weather-day-label";
-    label.textContent = formatForecastLabel(index, day.date);
+  const bottomRow = document.createElement("div");
+  bottomRow.className = "weather-inline-row weather-inline-row-bottom";
 
-    const date = document.createElement("div");
-    date.className = "weather-day-date";
-    date.textContent = formatShortDate(day.date);
-
-    const icon = document.createElement("div");
-    icon.className = "weather-day-icon";
-    icon.textContent = mapWeatherCodeToIcon(day.code);
-
-    const desc = document.createElement("div");
-    desc.className = "weather-day-desc";
-    desc.textContent = day.description;
-
-    const temp = document.createElement("div");
-    temp.className = "weather-day-temp";
-    temp.textContent = `${day.max}°${unit} / ${day.min}°${unit}`;
-
-    card.append(label, date, icon, desc, temp);
-    el.weatherForecastGrid.appendChild(card);
+  if (
+    todayForecast &&
+    Number.isFinite(Number(todayForecast.max)) &&
+    Number.isFinite(Number(todayForecast.min))
+  ) {
+    bottomRow.append(
+      buildWeatherInlineItem(
+        `最高 ${todayForecast.max}°${unit} / 最低 ${todayForecast.min}°${unit}`,
+        "weather-inline-range"
+      )
+    );
   }
+
+  if (Number.isFinite(apparentTemp)) {
+    bottomRow.append(
+      buildWeatherInlineItem(`体感 ${Math.round(apparentTemp)}°${unit}`, "weather-inline-feels")
+    );
+  }
+
+  const updatedAt = Number(weatherData?.updatedAt);
+  if (Number.isFinite(updatedAt) && updatedAt > 0) {
+    const timeText = new Intl.DateTimeFormat("zh-CN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).format(new Date(updatedAt));
+    bottomRow.append(buildWeatherInlineItem(`更新 ${timeText}`, "weather-inline-updated"));
+  }
+
+  el.weatherForecastGrid.append(topRow, bottomRow);
 }
 
 function paintWeather(weatherData, fromCache, stale) {
